@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从冷冻室到砧板</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #e9eef1; color: #1f2a30; line-height: 1.6; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #4d5b63; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fcfdfd; border-radius: 8px; padding: 14px; border: 1px solid #cdd8de; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; color: #33444d; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+  input, select { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid #a9b8c0; border-radius: 5px; width: 100%; min-width: 0; background: #fff; font-variant-numeric: tabular-nums; }
+  .bad { border-color: #b23a2b !important; background: #fff0ec !important; }
+  label { font-size: 12px; color: #5a6a72; display: block; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 5px; border: 1px solid #2f5d73; background: #2f5d73; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #2f5d73; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .sub { font-size: 13px; color: #33444d; font-weight: 600; margin: 12px 0 6px; }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .err { display: none; background: #fff0ec; border: 1px solid #e0b2a7; color: #8a2a1b; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  .muted { color: #5a6a72; font-size: 12px; }
+  #summary { font-size: 19px; font-weight: 700; overflow-wrap: anywhere; margin-bottom: 8px; }
+  #summary.late { color: #9c2f1c; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  svg { display: block; width: 100%; height: auto; } svg text { font-family: inherit; }
+  .leg { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #33444d; margin-top: 6px; }
+  .leg i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; vertical-align: 0; margin-right: 4px; }
+  /* 时间线（竖排步骤） */
+  #steps { list-style: none; position: relative; margin-left: 6px; }
+  #steps li { position: relative; padding: 0 0 14px 22px; border-left: 2px solid #9fb6c2; overflow-wrap: anywhere; font-size: 14px; }
+  #steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  #steps li::before { content: ""; position: absolute; left: -7px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #2f5d73; }
+  #steps li.warn::before { border-color: #b23a2b; background: #fbe3dd; }
+  #steps li.end::before { background: #2f5d73; }
+  #steps b { font-variant-numeric: tabular-nums; margin-right: 8px; white-space: nowrap; }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pick button.on { background: #2f5d73; color: #fff; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #dbe3e7; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  @media (max-width: 480px) { .sug { flex-direction: column; align-items: stretch; } #summary { font-size: 17px; } }
+  .how { font-size: 13px; color: #33444d; } .how p { margin: 6px 0; } .how b { color: #1f2a30; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>从冷冻室到砧板</h1>
+  <p class="lead">晚上要做的那块肉还冻着，几点拿出来、用什么方法化，才赶得上下锅？填这块肉多厚、几点下锅，这里把冷藏室、泡冷水、冲流水、室温四种化法的时间都排出来，告诉你最晚几点动手，再给一张从冷冻室到砧板的时间线。默认例子是虚构的，参数是示例值。</p>
+
+  <div class="card">
+    <h2>这块冻肉</h2>
+    <div class="grid">
+      <div><label for="shape">形状</label><select id="shape"><option value="slab">扁块（肉片、牛排、冻成一板的肉馅）</option><option value="cyl">长条（里脊、整根腿肉）</option><option value="sphere">圆团（冻成一坨、整只小鸡）</option></select></div>
+      <div><label for="size" id="sizeLab">最薄那个方向的厚度（cm）</label><input id="size" inputmode="decimal" maxlength="5"></div>
+      <div><label for="startT">冷冻室温度（°C）</label><input id="startT" inputmode="decimal" maxlength="5"></div>
+    </div>
+    <div class="sub">什么时候下锅</div>
+    <div class="grid">
+      <div><label for="now">现在几点</label><input id="now" maxlength="5" placeholder="16:00"></div>
+      <div><label for="cookDay">哪天下锅</label><select id="cookDay"><option value="0">今天</option><option value="1">明天</option><option value="2">后天</option><option value="3">大后天</option></select></div>
+      <div><label for="cook">几点下锅</label><input id="cook" maxlength="5" placeholder="18:30"></div>
+      <div><label for="buffer">化好后留多少分钟切、腌</label><input id="buffer" inputmode="numeric" maxlength="3"></div>
+    </div>
+    <div class="sub">用什么方法化</div>
+    <div class="pick" id="methodPick"></div>
+    <div class="sub">四种化法的温度和换热快慢（示例值，按自家情况调）</div>
+    <div class="grid">
+      <div><label for="fridgeT">冷藏室（°C）</label><input id="fridgeT" inputmode="decimal" maxlength="4"></div>
+      <div><label for="waterT">冷水（°C）</label><input id="waterT" inputmode="decimal" maxlength="4"></div>
+      <div><label for="roomT">室温（°C）</label><input id="roomT" inputmode="decimal" maxlength="4"></div>
+      <div><label for="hAir">冷藏室换热 W/(m²·K)</label><input id="hAir" inputmode="decimal" maxlength="5"></div>
+      <div><label for="hStill">泡冷水换热</label><input id="hStill" inputmode="decimal" maxlength="5"></div>
+      <div><label for="hRun">冲流水换热</label><input id="hRun" inputmode="decimal" maxlength="5"></div>
+      <div><label for="hRoom">室温换热</label><input id="hRoom" inputmode="decimal" maxlength="5"></div>
+    </div>
+    <div class="sub">肉本身（示例值）</div>
+    <div class="grid">
+      <div><label for="water">含水率（%）</label><input id="water" inputmode="decimal" maxlength="4"></div>
+      <div><label for="k">化开那层导热 W/(m·K)</label><input id="k" inputmode="decimal" maxlength="5"></div>
+    </div>
+    <p class="muted" style="margin-top:6px">换热系数越大，热量从外面进肉越快：静止的冷藏室空气大约个位数，泡在水里几十，水流冲着几百。袋子里有空气会慢很多，所以装袋要挤掉空气。</p>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="err" id="error"></div>
+
+  <div id="out">
+    <div class="card">
+      <div id="summary"></div>
+      <ul id="facts"></ul>
+    </div>
+    <div class="card">
+      <h2>四种化法摆在同一根时间轴上</h2>
+      <div id="axis"></div>
+      <div class="leg"><span><i style="background:#3d7a5a"></i>来得及（条的左端就是最晚开始）</span><span><i style="background:#c9a23a"></i>来得及但一般不建议</span><span><i style="background:#c0472c"></i>来不及（左端早于现在）</span><span><i style="background:#1f2a30;width:3px"></i>现在 / 下锅</span></div>
+    </div>
+    <div class="card">
+      <h2 id="stepsTitle">时间线</h2>
+      <ol id="steps"></ol>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>换个做法看看（点一下代回去重算）</h2>
+      <div id="sugs"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>带走结果</h2>
+    <div class="dl">
+      <button id="dlCSV">CSV 表格</button><button id="dlMD">Markdown 报告</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+      <button id="reset" class="ghost">恢复默认</button>
+    </div>
+    <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在。</p>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>化冻是从外往里</b>：外面先化开，热量要穿过已经化开的那层才能到中间的冰。化开的那层越厚，热进得越慢，所以厚度翻倍，时间不止翻倍。</p>
+    <p><b>公式</b>：用食品工程里的 Plank 公式估算：时间 = 密度 × 每公斤要吸的热 ÷ (外面温度 − 冰点) × (P·厚度 ÷ 换热系数 + R·厚度² ÷ 导热)。扁块 P=1/2、R=1/8，长条按直径 P=1/4、R=1/16，圆团按直径 P=1/6、R=1/24。每公斤要吸的热 = 含水率 × 334 kJ（冰化成水）+ 1.8 kJ × 从冷冻室温度升到冰点的度数。密度按 1050 kg/m³，冰点按 −1.5°C。</p>
+    <p><b>排时间</b>：化冻分钟向上取整；最晚开始 = 下锅 − 留出的准备时间 − 化冻分钟。最晚开始不早于现在，就来得及。自动挑方法时，按冷藏室 → 泡冷水 → 冲流水的顺序挑第一个来得及的；室温不自动挑。</p>
+    <p class="muted">不算：化开那层还要继续升温、袋子本身的隔热（并进换热系数）、冷水被肉慢慢泡凉。估算会和实际差不少，最后以按一下最厚处确认为准。室温和温水化冻，一般食品安全建议都不推荐；这里只是排时间，不是食品安全判定。</p>
+  </div>
+</div>
+
+  <script>
+/* 从冷冻室到砧板 · 计算核心
+ * 化冻时间用 Plank 公式的化冻形式估算（外面先化开，热量穿过已化开的那层往里走）：
+ *   t = ρ·ΔH / (T介质 − T冰点) × (P·a/h + R·a²/k)
+ *   扁块 a=厚度、P=1/2、R=1/8；长条（圆柱）a=直径、P=1/4、R=1/16；圆团（球）a=直径、P=1/6、R=1/24。
+ *   ΔH = 含水率 × 334 kJ/kg（冰化成水）+ 冻肉比热 1.8 kJ/(kg·K) × (T冰点 − 起始温度)（先把冻肉升到冰点）。
+ * 不算：化开那层再往上升温要的热、包装袋的热阻（并进 h）、冷水慢慢变冷。这是估算，不是食品安全判定。
+ * 排时间：全部用整分钟。化冻要的分钟 = ceil(t/60)；最晚开始 = 下锅 − 预留 − 化冻分钟；最晚开始 ≥ 现在 才来得及。 */
+(function (root) {
+  'use strict';
+  const RHO = 1050, LATENT = 334000, C_FROZEN = 1800, T_F = -1.5;
+  const SHAPES = {
+    slab: { name: '扁块', dim: '厚度', P: 1 / 2, R: 1 / 8 },
+    cyl: { name: '长条', dim: '直径', P: 1 / 4, R: 1 / 16 },
+    sphere: { name: '圆团', dim: '直径', P: 1 / 6, R: 1 / 24 }
+  };
+  const METHODS = ['fridge', 'still', 'run', 'room'];
+  const MNAME = { fridge: '冷藏室慢慢化', still: '装袋泡冷水（每 30 分钟换水）', run: '装袋冲流水', room: '放室温' };
+  const MSHORT = { fridge: '冷藏室', still: '泡冷水', run: '冲流水', room: '室温' };
+  const PREF = ['fridge', 'still', 'run']; /* 自动挑：来得及的里面按这个顺序；室温不自动挑 */
+
+  function Bad(message, field) { const e = new Error(message); e.field = field; return e; }
+  function num(v, field, label, lo, hi) {
+    const s = String(v == null ? '' : v).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(s)) throw Bad(label + '要填数字（现在是「' + s + '」）', field);
+    const x = Number(s);
+    if (!(x >= lo && x <= hi)) throw Bad(label + '要在 ' + lo + ' 到 ' + hi + ' 之间（现在是 ' + s + '）', field);
+    return x;
+  }
+  /* 「18:30」「18：30」「9:05」→ 分钟 */
+  function clock(v, field, label) {
+    const s = String(v == null ? '' : v).trim().replace('：', ':');
+    const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+    if (!m) throw Bad(label + '要写成 时:分，比如 18:30（现在是「' + s + '」）', field);
+    const h = +m[1], mi = +m[2];
+    if (h > 23 || mi > 59) throw Bad(label + '不是有效时刻（' + s + '）', field);
+    return h * 60 + mi;
+  }
+
+  function parse(inp) {
+    if (!inp || typeof inp !== 'object') throw Bad('输入不完整', 'size');
+    const P = {};
+    P.shape = inp.shape;
+    if (!SHAPES[P.shape]) throw Bad('形状只能是扁块、长条或圆团', 'shape');
+    P.size = num(inp.size, 'size', SHAPES[P.shape].dim, 0.3, 40);
+    P.startT = num(inp.startT, 'startT', '冷冻室温度', -40, -3);
+    P.water = num(inp.water, 'water', '含水率', 30, 90);
+    P.k = num(inp.k, 'k', '化开那层导热', 0.1, 1);
+    P.fridgeT = num(inp.fridgeT, 'fridgeT', '冷藏室温度', 0, 10);
+    P.waterT = num(inp.waterT, 'waterT', '冷水温度', 0, 40);
+    P.roomT = num(inp.roomT, 'roomT', '室温', 5, 40);
+    P.hAir = num(inp.hAir, 'hAir', '冷藏室里的换热系数', 1, 100);
+    P.hStill = num(inp.hStill, 'hStill', '泡冷水的换热系数', 5, 2000);
+    P.hRun = num(inp.hRun, 'hRun', '冲流水的换热系数', 5, 2000);
+    P.hRoom = num(inp.hRoom, 'hRoom', '室温下的换热系数', 1, 100);
+    P.now = clock(inp.now, 'now', '现在几点');
+    P.cookDay = num(inp.cookDay, 'cookDay', '哪天下锅', 0, 3);
+    if (P.cookDay !== Math.floor(P.cookDay)) throw Bad('哪天下锅只能是今天、明天、后天或大后天', 'cookDay');
+    P.cookAt = P.cookDay * 1440 + clock(inp.cook, 'cook', '几点下锅');
+    P.buffer = num(inp.buffer, 'buffer', '化好后留出的准备时间', 0, 240);
+    if (P.buffer !== Math.floor(P.buffer)) throw Bad('准备时间写整分钟', 'buffer');
+    if (P.cookAt - P.buffer <= P.now) throw Bad('下锅时间减去准备时间已经不晚于现在了，往后挪一挪下锅时间', 'cook');
+    P.method = inp.method || 'auto';
+    if (P.method !== 'auto' && METHODS.indexOf(P.method) < 0) throw Bad('化冻方法不认识', 'method');
+    P.a = P.size / 100;
+    P.dH = P.water / 100 * LATENT + C_FROZEN * (T_F - P.startT);
+    return P;
+  }
+  function medium(P, m) {
+    return m === 'fridge' ? { T: P.fridgeT, h: P.hAir } : m === 'still' ? { T: P.waterT, h: P.hStill } : m === 'run' ? { T: P.waterT, h: P.hRun } : { T: P.roomT, h: P.hRoom };
+  }
+  /* Plank 化冻时间（秒）；介质不比冰点暖就返回 Infinity */
+  function thawSeconds(P, m, a) {
+    const md = medium(P, m), dT = md.T - T_F, S = SHAPES[P.shape];
+    if (!(dT > 0)) return Infinity;
+    if (a == null) a = P.a;
+    return RHO * P.dH / dT * (S.P * a / md.h + S.R * a * a / P.k);
+  }
+  /* 反解：给定可用秒数，最大的 a（米）。R/k·a² + P/h·a − t·dT/(ρΔH) = 0 的正根 */
+  function maxSize(P, m, seconds) {
+    const md = medium(P, m), dT = md.T - T_F, S = SHAPES[P.shape];
+    if (!(dT > 0) || !(seconds > 0)) return 0;
+    const A = S.R / P.k, B = S.P / md.h, Cc = -seconds * dT / (RHO * P.dH);
+    return (-B + Math.sqrt(B * B - 4 * A * Cc)) / (2 * A);
+  }
+  function warnOf(P, m) {
+    if (m === 'room') return '一般不建议：外面一层早化开，会在室温里放好几个小时';
+    if ((m === 'still' || m === 'run') && P.waterT > 21) return '水温超过 21°C，一般建议用冷水';
+    return '';
+  }
+
+  function calculate(inp) {
+    const P = parse(inp);
+    const avail = P.cookAt - P.buffer - P.now; /* 分钟 */
+    const rows = METHODS.map((m) => {
+      const sec = thawSeconds(P, m);
+      const md = medium(P, m);
+      if (!isFinite(sec)) return { m, name: MNAME[m], ok: false, never: true, warn: '温度不高于冰点 ' + T_F + '°C，化不开', T: md.T, h: md.h };
+      const mins = Math.ceil(sec / 60 - 1e-9);
+      const latest = P.cookAt - P.buffer - mins;
+      return { m, name: MNAME[m], sec, mins, latest, ok: latest >= P.now, slack: latest - P.now, warn: warnOf(P, m), T: md.T, h: md.h,
+        changes: m === 'still' ? Math.max(0, Math.ceil(mins / 30) - 1) : 0 };
+    });
+    const by = {}; rows.forEach((r) => { by[r.m] = r; });
+    let pick = P.method;
+    if (pick === 'auto') pick = PREF.find((m) => by[m].ok) || null;
+    const chosen = pick ? by[pick] : null;
+    const r = { P, avail, rows, by, pick, chosen };
+    r.summary = summarize(r);
+    r.steps = chosen && !chosen.never ? stepsOf(r, chosen) : [];
+    r.facts = factsOf(r);
+    return r;
+  }
+
+  const f0 = (x) => String(Math.round(x));
+  const f1 = (x) => { const v = Math.round(x * 10) / 10; return (Object.is(v, -0) ? 0 : v).toFixed(1); };
+  /* 分钟 → 「24 小时 30 分」「45 分钟」 */
+  function dur(mins) {
+    mins = Math.round(mins);
+    if (mins < 60) return mins + ' 分钟';
+    const h = Math.floor(mins / 60), m = mins % 60;
+    if (h >= 48) { const d = Math.floor(h / 24), hh = h % 24; return d + ' 天' + (hh ? ' ' + hh + ' 小时' : '') + (m ? ' ' + m + ' 分' : ''); }
+    return h + ' 小时' + (m ? ' ' + m + ' 分' : '');
+  }
+  const DAYS = { '-2': '前天', '-1': '昨天', '0': '今天', '1': '明天', '2': '后天', '3': '大后天' };
+  /* 从今天 0 点算起的分钟 → 「昨天 18:00」 */
+  function at(mins) {
+    const d = Math.floor(mins / 1440), rest = mins - d * 1440;
+    const z = (n) => String(n).padStart(2, '0');
+    const day = DAYS[String(d)] || (d < 0 ? (-d) + ' 天前' : d + ' 天后');
+    return day + ' ' + z(Math.floor(rest / 60)) + ':' + z(rest % 60);
+  }
+
+  function summarize(r) {
+    const P = r.P, c = r.chosen, f = r.by.fridge;
+    const S = SHAPES[P.shape];
+    const what = f1(P.size).replace(/\.0$/, '') + ' cm ' + (P.shape === 'slab' ? '厚的' : '粗的') + S.name;
+    if (P.method === 'auto' && !c) {
+      const best = PREF.map((m) => r.by[m]).filter((x) => !x.never).sort((a, b) => b.latest - a.latest)[0];
+      return '来不及：这块 ' + what + '最快的' + MSHORT[best.m] + '也要 ' + dur(best.mins) + '，最晚得在 ' + at(best.latest) + ' 开始，现在已经 ' + at(P.now) + ' 了。';
+    }
+    if (c.never) return '选的' + c.name + '温度不高于冰点，这块化不开，换个方法。';
+    let s = (c.ok ? '' : '这个方法来不及：') + '这块 ' + what + '用' + c.name + '要 ' + dur(c.mins) + '，最晚 ' + at(c.latest) + ' 开始' + (c.ok ? '（离现在还有 ' + dur(c.slack) + '）' : '，已经过去 ' + dur(-c.slack)) + '。' + (c.warn ? c.warn + '。' : '');
+    if (c.m !== 'fridge' && !f.never && !f.ok) s += '放冷藏室要 ' + dur(f.mins) + '，得 ' + at(f.latest) + ' 前拿出来，已经错过了。';
+    return s;
+  }
+  function stepsOf(r, c) {
+    const P = r.P, start = c.ok ? c.latest : P.now, done = start + c.mins;
+    const st = [{ at: start, text: c.m === 'fridge' ? '从冷冻室拿出来，连袋放冷藏室最下层，底下垫个盘子接水' : c.m === 'room' ? '从冷冻室拿出来放室温' : '从冷冻室拿出来，装进不漏水的袋子挤掉空气，' + (c.m === 'still' ? '整袋压进一盆冷水' : '放在水龙头下小股冲') }];
+    if (c.m === 'still') {
+      /* 换水超过 8 次就不逐条列：列前 3 次，再一句总的，最后一次单列 */
+      if (c.changes <= 8) for (let i = 1; i <= c.changes; i++) st.push({ at: start + 30 * i, text: '换一次水（第 ' + i + ' 次）' });
+      else {
+        for (let i = 1; i <= 3; i++) st.push({ at: start + 30 * i, text: '换一次水（第 ' + i + ' 次）' });
+        st.push({ at: start + 120, text: '之后照样每 30 分钟换一次，第 4 到第 ' + (c.changes - 1) + ' 次不逐条列了' });
+        st.push({ at: start + 30 * c.changes, text: '换最后一次水（第 ' + c.changes + ' 次）' });
+      }
+    }
+    st.push({ at: done, text: '按估算中间也化开了，按一下最厚的地方确认' + (c.m === 'fridge' ? '' : '，马上进冷藏或直接做') });
+    st.push({ at: P.cookAt, text: '下锅' + (P.buffer ? '（前面留了 ' + P.buffer + ' 分钟切和腌）' : '') });
+    if (!c.ok) st.unshift({ at: P.now, text: '注意：按这个方法化完是 ' + at(done) + '，比计划的 ' + at(P.cookAt - P.buffer) + ' 晚 ' + dur(done - (P.cookAt - P.buffer)) });
+    return st;
+  }
+  function factsOf(r) {
+    const P = r.P, o = [];
+    o.push('离下锅还有 ' + dur(P.cookAt - P.now) + '，扣掉准备的 ' + P.buffer + ' 分钟，留给化冻的是 ' + dur(r.avail) + '。');
+    o.push('每公斤要吸 ' + f0(P.dH / 1000) + ' kJ 热才化得开：冰化成水 ' + f0(P.water / 100 * LATENT / 1000) + ' kJ，先从 ' + f0(P.startT) + '°C 升到冰点 ' + f0(C_FROZEN * (T_F - P.startT) / 1000) + ' kJ。');
+    r.rows.forEach((x) => {
+      if (x.never) { o.push(MSHORT[x.m] + '：化不开（' + x.warn + '）'); return; }
+      o.push(MSHORT[x.m] + '（' + tc(x.T) + '°C）要 ' + dur(x.mins) + '，最晚 ' + at(x.latest) + ' 开始' + (x.ok ? '' : '，来不及') + (x.warn ? '；' + x.warn : '') + '。');
+    });
+    return o;
+  }
+  const tc = (x) => f1(x).replace(/\.0$/, '');
+  function round1Down(x) { return Math.floor(x * 10 + 1e-9) / 10; }
+
+  /* 建议：每条都是一份改好的输入，能代回去重算 */
+  function suggestions(inp, r) {
+    const P = r.P, out = [], copy = (o) => JSON.parse(JSON.stringify(o));
+    const f = r.by.fridge;
+    if (!f.never && !f.ok) {
+      /* 1) 推迟下锅到冷藏来得及：最早下锅 = 现在 + 化冻 + 预留，向上取到 10 分钟 */
+      const need = Math.ceil((P.now + f.mins + P.buffer) / 10) * 10;
+      const day = Math.floor(need / 1440);
+      if (day <= 3) {
+        const s = copy(inp); s.cookDay = String(day); s.cook = hm(need - day * 1440); s.method = 'fridge';
+        out.push({ id: 'later', text: '改成 ' + at(need) + ' 下锅，现在放进冷藏室就来得及。', apply: s });
+      }
+      /* 2) 下次分装：冷藏室在现在这点时间里能化开的最大厚度 */
+      /* 按扁块反解：下次切小、装袋压扁冻，冷藏室在同样这段时间里能化开的最大厚度 */
+      const a = round1Down(maxSize(Object.assign({}, P, { shape: 'slab' }), 'fridge', r.avail * 60) * 100);
+      if (a >= 0.3 && (P.shape !== 'slab' || a < P.size)) {
+        const s = copy(inp); s.shape = 'slab'; s.size = String(a); s.method = 'fridge';
+        const x = calculate(s);
+        if (x.by.fridge.ok) out.push({ id: 'thin', text: '下次冻之前' + (P.shape === 'slab' ? '' : '切开') + '装袋压扁到 ' + a + ' cm 厚以内，同样时间放冷藏室，' + dur(x.by.fridge.mins) + '就化开。', apply: s });
+      }
+    }
+    /* 1b) 什么方法都来不及：用最快的冷水法，下锅最早能到几点 */
+    if (!r.chosen || !r.chosen.ok) {
+      if (!PREF.some((m) => r.by[m].ok)) {
+        const fast = PREF.map((m) => r.by[m]).filter((x) => !x.never).sort((a, b) => a.mins - b.mins)[0];
+        if (fast) {
+          const need = Math.ceil((P.now + fast.mins + P.buffer) / 10) * 10, day = Math.floor(need / 1440);
+          if (day <= 3) { const s = copy(inp); s.cookDay = String(day); s.cook = hm(need - day * 1440); s.method = fast.m;
+            out.push({ id: 'laterFast', text: '现在就' + MNAME[fast.m] + '，下锅推到 ' + at(need) + '。', apply: s }); }
+        }
+      }
+    }
+    /* 3) 当前选的方法来不及，换成来得及的里面最省心的 */
+    if (r.chosen && !r.chosen.ok) {
+      const alt = PREF.find((m) => r.by[m].ok);
+      if (alt) { const s = copy(inp); s.method = alt; out.push({ id: 'switch', text: '换成' + MNAME[alt] + '：' + dur(r.by[alt].mins) + '，最晚 ' + at(r.by[alt].latest) + ' 开始。', apply: s }); }
+    }
+    /* 4) 泡冷水改冲流水能省多少（只在确实省 ≥10 分钟时给） */
+    if (r.pick === 'still' && r.by.run.ok && r.by.still.mins - r.by.run.mins >= 10) {
+      const s = copy(inp); s.method = 'run';
+      out.push({ id: 'run', text: '不想每 30 分钟换水，就开小股流水冲：' + dur(r.by.run.mins) + '，比泡着快 ' + dur(r.by.still.mins - r.by.run.mins) + '。', apply: s });
+    }
+    return out;
+  }
+  function hm(m) { const z = (n) => String(n).padStart(2, '0'); return z(Math.floor(m / 60)) + ':' + z(m % 60); }
+
+  function csvCell(v) { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  const HEAD = ['方法', '介质温度 °C', '换热系数 W/(m²·K)', '化冻要多久', '化冻分钟', '最晚开始', '来得及', '提醒'];
+  function table(r) {
+    return r.rows.map((x) => [x.name, tc(x.T), f0(x.h), x.never ? '化不开' : dur(x.mins), x.never ? '' : x.mins, x.never ? '' : at(x.latest), x.never ? '否' : (x.ok ? '是' : '否'), x.warn || '']);
+  }
+  function toCSV(r, stamp) {
+    const L = [['从冷冻室到砧板', '生成于 ' + stamp], ['结论', r.summary], [], HEAD];
+    table(r).forEach((x) => L.push(x));
+    if (r.steps.length) { L.push([], ['时间', '要做的事']); r.steps.forEach((s) => L.push([at(s.at), s.text])); }
+    return L.map((row) => row.map(csvCell).join(',')).join('\n') + '\n';
+  }
+  function toMD(r, stamp, sg) {
+    const P = r.P, S = SHAPES[P.shape], o = [];
+    o.push('# 从冷冻室到砧板', '', '生成时间：' + stamp + '　默认例子为虚构，换热系数等参数是示例值', '', '**' + r.summary + '**', '');
+    r.facts.forEach((x) => o.push('- ' + x));
+    o.push('', '## 四种化法', '', '| ' + HEAD.join(' | ') + ' |', '|' + HEAD.map(() => '---').join('|') + '|');
+    table(r).forEach((x) => o.push('| ' + x.join(' | ') + ' |'));
+    if (r.steps.length) { o.push('', '## 时间线（' + MNAME[r.chosen.m] + '）', ''); r.steps.forEach((s) => o.push('- ' + at(s.at) + '　' + s.text)); }
+    if (sg && sg.length) { o.push('', '## 换个做法'); sg.forEach((s) => o.push('- ' + s.text)); }
+    o.push('', '## 前提', '',
+      '- ' + S.name + '，' + S.dim + ' ' + f1(P.size) + ' cm，冷冻室 ' + f0(P.startT) + '°C，含水 ' + f0(P.water) + '%，化开那层导热 ' + P.k + ' W/(m·K)，密度按 ' + RHO + ' kg/m³、冰点按 ' + T_F + '°C。',
+      '- Plank 公式估算：t = ρ·ΔH / (T介质 − T冰点) × (P·a/h + R·a²/k)。不算化开那层继续升温、袋子热阻（并进换热系数）、冷水变冷。',
+      '- 估算值会和实际差不少，以按压最厚处确认为准；室温化冻、温水化冻一般不建议。不是食品安全判定。');
+    return o.join('\n') + '\n';
+  }
+
+  const api = { parse, calculate, suggestions, thawSeconds, maxSize, medium, dur, at, hm, clock, toCSV, toMD, f0, f1, SHAPES, METHODS, MNAME, MSHORT, RHO, LATENT, C_FROZEN, T_F };
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 从冷冻室到砧板 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'freezer-to-board:v1';
+  const F = ['shape', 'size', 'startT', 'now', 'cookDay', 'cook', 'buffer', 'fridgeT', 'waterT', 'roomT', 'hAir', 'hStill', 'hRun', 'hRoom', 'water', 'k'];
+  const LIM = { shape: 8, size: 5, startT: 5, now: 5, cookDay: 1, cook: 5, buffer: 3, fridgeT: 4, waterT: 4, roomT: 4, hAir: 5, hStill: 5, hRun: 5, hRoom: 5, water: 4, k: 5, method: 8 };
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const DEFAULT = { shape: 'slab', size: '2.5', startT: '-18', now: '16:00', cookDay: '0', cook: '18:30', buffer: '20', method: 'auto',
+    fridgeT: '4', waterT: '15', roomT: '22', hAir: '8', hStill: '60', hRun: '250', hRoom: '8', water: '70', k: '0.45' };
+  const PRESETS = [
+    ['默认：一板猪肉片，晚饭要用', DEFAULT],
+    ['一整只小鸡，明天中午炖', Object.assign(copy(DEFAULT), { shape: 'sphere', size: '12', now: '21:00', cookDay: '1', cook: '11:30', buffer: '30', water: '68' })],
+    ['一根里脊，明晚做', Object.assign(copy(DEFAULT), { shape: 'cyl', size: '6', now: '20:00', cookDay: '1', cook: '18:00', buffer: '20' })],
+    ['薄薄一袋虾仁，马上要用', Object.assign(copy(DEFAULT), { size: '1.2', now: '18:00', cook: '18:40', buffer: '10', water: '78' })]
+  ];
+  const MOPT = [['auto', '自动挑'], ['fridge', '冷藏室'], ['still', '泡冷水'], ['run', '冲流水'], ['room', '室温']];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+      const s = {};
+      for (const k of F.concat(['method'])) { if (o[k] == null || typeof o[k] === 'object') return null; s[k] = String(o[k]).slice(0, LIM[k]); }
+      return s;
+    } catch (e) { return null; }
+  }
+  function fill() {
+    F.forEach((k) => { $(k).value = state[k]; });
+    [].forEach.call($('methodPick').children, (b) => b.classList.toggle('on', b.dataset.m === state.method));
+    $('sizeLab').textContent = state.shape === 'slab' ? '最薄那个方向的厚度（cm）' : '最粗处的直径（cm）';
+  }
+
+  const COL = { ok: '#3d7a5a', warn: '#c9a23a', late: '#c0472c' };
+  function colOf(x) { return !x.ok ? COL.late : x.warn ? COL.warn : COL.ok; }
+  /* 时间轴几何：左端 = 最早的「最晚开始」与现在之中更早者，右端 = 下锅；PNG 与 SVG 共用 */
+  function axisGeom(r, W, rowH) {
+    const P = r.P, rows = r.rows.filter((x) => !x.never);
+    const lo0 = Math.min(P.now, ...rows.map((x) => x.latest)), hi = P.cookAt;
+    const span = Math.max(30, hi - lo0), lo = lo0 - span * 0.03;
+    const padL = W < 600 ? 66 : 96, padR = 16, top = 26;
+    const X = (m) => padL + (m - lo) / (hi + span * 0.02 - lo) * (W - padL - padR);
+    const H = top + r.rows.length * rowH + 36;
+    return { lo, hi, span, padL, padR, top, X, H };
+  }
+  function tickStep(span, n) { n = n || 7; const c = [10, 15, 30, 60, 120, 180, 360, 720, 1440]; return c.find((s) => span / s <= n) || Math.ceil(span / n / 1440) * 1440; }
+  function tickLabel(m, step) { const s = C.at(m); return step >= 1440 || (m % 1440 === 0) ? s.replace(' 00:00', '') : s.split(' ')[1]; }
+  function renderAxis(r) {
+    const W = svgW(), small = W < 600, rowH = small ? 46 : 40, g = axisGeom(r, W, rowH), fz = small ? 13 : 12, P = r.P;
+    let h = '<svg viewBox="0 0 ' + W + ' ' + g.H + '" role="img" aria-label="四种化法的时间轴">';
+    const step = tickStep(g.hi - g.lo, small ? 4 : 7);
+    const first = Math.ceil(g.lo / step) * step;
+    const yB = g.top + r.rows.length * rowH;
+    for (let m = first; m <= g.hi; m += step) {
+      const x = g.X(m);
+      h += '<line x1="' + x + '" x2="' + x + '" y1="' + g.top + '" y2="' + yB + '" stroke="#e1e8ec"/>';
+      h += '<text x="' + x + '" y="' + (yB + 16) + '" text-anchor="middle" font-size="' + fz + '" fill="#5a6a72">' + esc(tickLabel(m, step)) + '</text>';
+    }
+    /* 现在 / 下锅两条竖线先画，压在条和字下面 */
+    [[P.now, '现在'], [P.cookAt, '下锅']].forEach(([m, t]) => {
+      const x = g.X(m);
+      h += '<line x1="' + x + '" x2="' + x + '" y1="' + (g.top - 2) + '" y2="' + yB + '" stroke="#1f2a30" stroke-width="2"' + (t === '现在' ? ' stroke-dasharray="4 3"' : '') + '/>';
+      h += '<text x="' + x + '" y="' + (t === '现在' ? g.top - 6 : yB + 32) + '" text-anchor="' + (t === '下锅' ? 'end' : 'middle') + '" font-size="' + fz + '" font-weight="700" fill="#1f2a30">' + t + '</text>';
+    });
+    r.rows.forEach((x, i) => {
+      const y = g.top + i * rowH, bh = small ? 18 : 16, yb = y + (rowH - bh) / 2;
+      h += '<text x="' + (g.padL - 8) + '" y="' + (yb + bh - 3) + '" text-anchor="end" font-size="' + (fz + 1) + '" fill="#1f2a30"' + (r.pick === x.m ? ' font-weight="700"' : '') + '>' + esc(C.MSHORT[x.m]) + '</text>';
+      if (x.never) { h += '<text x="' + (g.padL + 4) + '" y="' + (yb + bh - 3) + '" font-size="' + fz + '" fill="#9c2f1c">化不开</text>'; return; }
+      const x0 = g.X(x.latest), x1 = g.X(x.latest + x.mins);
+      h += '<rect data-m="' + x.m + '" x="' + x0 + '" y="' + yb + '" width="' + Math.max(1, x1 - x0) + '" height="' + bh + '" rx="3" fill="' + colOf(x) + '"' + (r.pick === x.m ? ' stroke="#1f2a30" stroke-width="1.5"' : '') + '/>';
+      const lab = C.dur(x.mins), lw = lab.length * fz * 0.62;
+      const inside = x1 - x0 > lw + 10;
+      h += '<text x="' + (inside ? x0 + 6 : x0 - 6) + '" y="' + (yb + bh - 3) + '" text-anchor="' + (inside ? 'start' : 'end') + '" font-size="' + fz + '" fill="' + (inside ? '#fff' : '#1f2a30') + '"' + (inside ? '' : ' stroke="#fcfdfd" stroke-width="4" paint-order="stroke"') + '>' + esc(lab) + '</text>';
+    });
+    h += '</svg>';
+    $('axis').innerHTML = h;
+  }
+  function svgW() { const w = ($('out') && $('out').clientWidth) || 900; return Math.round(Math.max(330, Math.min(940, w - 30))); }
+  function renderSteps(r) {
+    $('stepsTitle').textContent = r.chosen && !r.chosen.never ? '时间线：' + C.MNAME[r.chosen.m] : '时间线';
+    if (!r.steps.length) { $('steps').innerHTML = '<li class="warn">没有能排的时间线：先在下面挑一个建议，或者改下锅时间。</li>'; return; }
+    $('steps').innerHTML = r.steps.map((s, i) => '<li class="' + (s.text.indexOf('注意') === 0 ? 'warn' : i === r.steps.length - 1 ? 'end' : '') + '"><b>' + esc(C.at(s.at)) + '</b>' + esc(s.text) + '</li>').join('');
+  }
+  function sugList(sg) {
+    const box = $('sugs'); box.innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      const bt = document.createElement('button'); bt.textContent = '代回去算'; bt.dataset.sug = x.id;
+      bt.addEventListener('click', () => { state = copy(x.apply); fill(); run(); });
+      d.appendChild(bt); box.appendChild(d);
+    });
+    $('sugCard').style.display = sg.length ? '' : 'none';
+  }
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    try {
+      const r = C.calculate(state);
+      const sg = C.suggestions(state, r);
+      $('error').style.display = 'none'; $('out').style.display = '';
+      $('summary').textContent = r.summary;
+      $('summary').classList.toggle('late', !r.chosen || !r.chosen.ok);
+      $('facts').innerHTML = r.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+      last = { r, sg };
+      renderAxis(r); renderSteps(r); sugList(sg);
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%·～';
+    const out = []; let line = [];
+    const toks = String(t).match(/[+±-]?[0-9][0-9,.:%/-]*|[A-Za-z_][A-Za-z0-9_.\-/]*|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  function fitText(g, t, w) {
+    if (g.measureText(t).width <= w) return t;
+    let s = t; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1);
+    return s + '…';
+  }
+  function drawPNG(Lx) {
+    const r = Lx.r, P = r.P;
+    const Wd = 1080, H = 1350, X = 70, TW = 940;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d'), FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#e9eef1'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#fcfdfd'; g.fillRect(36, 36, Wd - 72, H - 72);
+    g.fillStyle = '#5a6a72'; g.font = '24px ' + FF;
+    const S = C.SHAPES[P.shape];
+    g.fillText(fitText(g, '从冷冻室到砧板 · ' + S.name + ' ' + C.f1(P.size) + ' cm · ' + C.f0(P.startT) + '°C · ' + C.at(P.cookAt) + ' 下锅', TW), X, 96);
+    g.fillStyle = (!r.chosen || !r.chosen.ok) ? '#9c2f1c' : '#1f2a30'; g.font = 'bold 30px ' + FF;
+    let y = 146;
+    const sl = wrap(g, r.summary, TW);
+    if (sl.length > 5) { sl.length = 5; sl[4] = fitText(g, sl[4] + '……', TW); }
+    sl.forEach((l) => { g.fillText(l, X, y); y += 42; });
+    y += 10;
+    /* 时间轴 */
+    g.fillStyle = '#33444d'; g.font = '22px ' + FF; g.fillText('四种化法（条的左端 = 最晚开始，右端 = 化好）', X, y); y += 16;
+    const rowH = 52, ax = axisGeom(r, TW, rowH);
+    g.save(); g.translate(X, y);
+    const step = tickStep(ax.hi - ax.lo), yB = ax.top + r.rows.length * rowH;
+    g.font = '16px ' + FF;
+    for (let m = Math.ceil(ax.lo / step) * step; m <= ax.hi; m += step) {
+      g.strokeStyle = '#e1e8ec'; g.lineWidth = 1; g.beginPath(); g.moveTo(ax.X(m), ax.top); g.lineTo(ax.X(m), yB); g.stroke();
+      g.fillStyle = '#5a6a72'; g.textAlign = 'center'; g.fillText(tickLabel(m, step), ax.X(m), yB + 20);
+    }
+    g.textAlign = 'left';
+    [[P.now, '现在'], [P.cookAt, '下锅']].forEach(([m, t]) => {
+      g.strokeStyle = '#1f2a30'; g.lineWidth = 2; g.setLineDash(t === '现在' ? [5, 4] : []); g.beginPath(); g.moveTo(ax.X(m), ax.top - 2); g.lineTo(ax.X(m), yB); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#1f2a30'; g.font = 'bold 17px ' + FF; g.textAlign = t === '下锅' ? 'right' : 'center'; g.fillText(t, ax.X(m), t === '现在' ? ax.top - 8 : yB + 42); g.textAlign = 'left';
+    });
+    r.rows.forEach((x, i) => {
+      const yy = ax.top + i * rowH, bh = 22, yb = yy + (rowH - bh) / 2;
+      g.fillStyle = '#1f2a30'; g.font = (r.pick === x.m ? 'bold ' : '') + '19px ' + FF; g.textAlign = 'right'; g.fillText(C.MSHORT[x.m], ax.padL - 10, yb + 17); g.textAlign = 'left';
+      if (x.never) { g.fillStyle = '#9c2f1c'; g.font = '17px ' + FF; g.fillText('化不开', ax.padL + 4, yb + 17); return; }
+      const x0 = ax.X(x.latest), x1 = ax.X(x.latest + x.mins);
+      g.fillStyle = colOf(x); g.fillRect(x0, yb, Math.max(2, x1 - x0), bh);
+      if (r.pick === x.m) { g.strokeStyle = '#1f2a30'; g.lineWidth = 2; g.strokeRect(x0, yb, Math.max(2, x1 - x0), bh); }
+      g.font = '17px ' + FF; const lab = C.dur(x.mins), lw = g.measureText(lab).width;
+      if (x1 - x0 > lw + 14) { g.fillStyle = '#fff'; g.fillText(lab, x0 + 7, yb + 17); } else { g.textAlign = 'right'; g.strokeStyle = '#fcfdfd'; g.lineWidth = 5; g.lineJoin = 'round'; g.strokeText(lab, x0 - 7, yb + 17); g.fillStyle = '#1f2a30'; g.fillText(lab, x0 - 7, yb + 17); g.textAlign = 'left'; }
+    });
+    g.restore();
+    y += ax.H + 26;
+    /* 时间线 */
+    const steps = r.steps.slice(0, 9);
+    if (steps.length) {
+      g.fillStyle = '#33444d'; g.font = '22px ' + FF; g.fillText('时间线：' + C.MNAME[r.chosen.m], X, y); y += 34;
+      g.font = 'bold 19px ' + FF;
+      const tw = Math.max(...steps.map((s) => g.measureText(C.at(s.at)).width)) + 18;
+      steps.forEach((s) => {
+        g.font = '19px ' + FF;
+        const ls = wrap(g, s.text, TW - tw - 24).slice(0, 2);
+        if (y + ls.length * 26 > H - 260) return;
+        g.fillStyle = s.text.indexOf('注意') === 0 ? '#b23a2b' : '#2f5d73'; g.beginPath(); g.arc(X + 7, y - 6, 6, 0, 7); g.fill();
+        g.fillStyle = '#1f2a30'; g.font = 'bold 19px ' + FF; g.fillText(C.at(s.at), X + 22, y);
+        g.font = '19px ' + FF; ls.forEach((l, i) => g.fillText(l, X + 22 + tw, y + i * 26));
+        y += ls.length * 26 + 10;
+      });
+      if (r.steps.length > steps.length) { g.fillStyle = '#5a6a72'; g.font = '16px ' + FF; g.fillText('……还有 ' + (r.steps.length - steps.length) + ' 步，见 Markdown 报告', X + 22, y); y += 26; }
+    }
+    if (Lx.sg.length && y < H - 200) {
+      y += 10; g.fillStyle = '#33444d'; g.font = '22px ' + FF; g.fillText('换个做法', X, y); y += 32;
+      g.fillStyle = '#1f2a30'; g.font = '19px ' + FF;
+      const lines = []; Lx.sg.slice(0, 3).forEach((x) => wrap(g, '· ' + x.text, TW).forEach((l) => lines.push(l)));
+      for (const l of lines) { if (y > H - 140) break; g.fillText(l, X, y); y += 28; }
+    }
+    /* 剩下的地方放「四种化法各要多久」，放不下就停 */
+    if (y < H - 260) {
+      y += 14; g.fillStyle = '#33444d'; g.font = '22px ' + FF; g.fillText('为什么这么排', X, y); y += 32;
+      g.fillStyle = '#33444d'; g.font = '18px ' + FF;
+      for (const f of r.facts) { const ls = wrap(g, '· ' + f, TW); if (y + ls.length * 26 > H - 120) break; ls.forEach((l) => { g.fillText(l, X, y); y += 26; }); y += 4; }
+    }
+    g.fillStyle = '#5a6a72'; g.font = '18px ' + FF;
+    wrap(g, 'Plank 公式估算，换热系数与肉的参数是示例值，默认例子为虚构；实际以按压最厚处确认为准。只是排时间，不是食品安全判定。', TW).forEach((l, i) => g.fillText(l, X, H - 96 + i * 26));
+    return Promise.resolve(cv);
+  }
+  function backup() {
+    const r = last.r;
+    return { app: '从冷冻室到砧板', version: 1, savedAt: stamp(), input: copy(state),
+      result: { summary: r.summary, pick: r.pick, availMinutes: r.avail,
+        methods: r.rows.map((x) => ({ method: x.m, name: x.name, minutes: x.never ? null : x.mins, latestStart: x.never ? null : C.at(x.latest), inTime: !!x.ok, warn: x.warn || '' })),
+        steps: r.steps.map((s) => ({ at: C.at(s.at), text: s.text })) } };
+  }
+  function init() {
+    F.forEach((k) => $(k).addEventListener('input', () => { state[k] = $(k).value; if (k === 'shape') fill(); run(); }));
+    MOPT.forEach(([m, t]) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = t; b.dataset.m = m;
+      b.addEventListener('click', () => { state.method = m; fill(); run(); });
+      $('methodPick').appendChild(b);
+    });
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      $('presets').appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download('从冷冻室到砧板.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download('从冷冻室到砧板.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download('从冷冻室到砧板-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).then((cv) => cv.toBlob((b) => download('从冷冻室到砧板-1080x1350.png', b), 'image/png')); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (last) renderAxis(last.r); }, 150); });
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, DEFAULT };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
